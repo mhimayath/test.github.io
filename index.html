@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Eisenhower Matrix</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --border: #dcdfe3;
+      --text: #1f2933;
+      --muted: #6b7280;
+      --accent: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      margin-top: 0;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .quadrant {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 280px;
+    }
+
+    .quadrant h2 {
+      font-size: 16px;
+      margin: 0 0 12px 0;
+    }
+
+    .task-list {
+      flex: 1;
+      list-style: none;
+      padding: 0;
+      margin: 0 0 12px 0;
+    }
+
+    .task {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      background: #fafafa;
+    }
+
+    .task span {
+      flex: 1;
+      margin-right: 8px;
+      font-size: 14px;
+    }
+
+    .task button {
+      background: none;
+      border: none;
+      color: #dc2626;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .add-task {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-task input {
+      flex: 1;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .add-task button {
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: none;
+      background: var(--accent);
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    footer {
+      margin-top: 24px;
+      text-align: right;
+    }
+
+    footer button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Eisenhower Matrix</h1>
+  <p class="subtitle">Organize tasks by urgency and importance</p>
+
+  <div class="matrix" id="matrix"></div>
+
+  <footer>
+    <button onclick="clearAll()">Clear all tasks</button>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = 'eisenhower-matrix';
+
+    const quadrants = [
+      { id: 'q1', title: 'Urgent & Important (Do)' },
+      { id: 'q2', title: 'Not Urgent & Important (Decide)' },
+      { id: 'q3', title: 'Urgent & Not Important (Delegate)' },
+      { id: 'q4', title: 'Not Urgent & Not Important (Delete)' }
+    ];
+
+    let data = loadData();
+
+    function loadData() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+      const initial = {};
+      quadrants.forEach(q => initial[q.id] = []);
+      return initial;
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function render() {
+      const matrix = document.getElementById('matrix');
+      matrix.innerHTML = '';
+
+      quadrants.forEach(q => {
+        const container = document.createElement('div');
+        container.className = 'quadrant';
+
+        const title = document.createElement('h2');
+        title.textContent = q.title;
+
+        const list = document.createElement('ul');
+        list.className = 'task-list';
+
+        data[q.id].forEach((task, index) => {
+          const li = document.createElement('li');
+          li.className = 'task';
+
+          const span = document.createElement('span');
+          span.textContent = task;
+
+          const btn = document.createElement('button');
+          btn.textContent = '✕';
+          btn.onclick = () => removeTask(q.id, index);
+
+          li.appendChild(span);
+          li.appendChild(btn);
+          list.appendChild(li);
+        });
+
+        const form = document.createElement('div');
+        form.className = 'add-task';
+
+        const input = document.createElement('input');
+        input.placeholder = 'New task';
+
+        const addBtn = document.createElement('button');
+        addBtn.textContent = 'Add';
+        addBtn.onclick = () => {
+          if (input.value.trim() !== '') {
+            addTask(q.id, input.value.trim());
+            input.value = '';
+          }
+        };
+
+        form.appendChild(input);
+        form.appendChild(addBtn);
+
+        container.appendChild(title);
+        container.appendChild(list);
+        container.appendChild(form);
+
+        matrix.appendChild(container);
+      });
+    }
+
+    function addTask(quadrantId, text) {
+      data[quadrantId].push(text);
+      saveData();
+      render();
+    }
+
+    function removeTask(quadrantId, index) {
+      data[quadrantId].splice(index, 1);
+      saveData();
+      render();
+    }
+
+    function clearAll() {
+      if (!confirm('Are you sure you want to clear all tasks?')) return;
+      quadrants.forEach(q => data[q.id] = []);
+      saveData();
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>
